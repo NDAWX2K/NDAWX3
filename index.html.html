@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDAWX - Non-Disclosure Agreement Weather</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: #330000;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            color: #ff6b6b;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1rem;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #ff6b6b;
+            border-bottom: 2px solid #ff6b6b;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        #map {
+            height: 600px;
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .airport-station {
+            background-color: #330000;
+            color: #ff6b6b;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .airport-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .temperature {
+            color: #4fc3f7;
+        }
+
+        .wind-speed {
+            color: #81c784;
+        }
+
+        .forecast-section {
+            background-color: #2a2a2a;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .daily-fact {
+            background-color: #330000;
+            padding: 15px;
+            border-left: 4px solid #ff6b6b;
+            border-radius: 0 8px 8px 0;
+            margin-top: 20px;
+        }
+
+        .synoptic-update {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .synoptic-box {
+            background-color: #330000;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .synoptic-title {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+
+        .county-local-effects {
+            margin-top: 20px;
+        }
+
+        .effect-item {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #2a2a2a;
+            border-radius: 5px;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .toggle-container input {
+            margin-right: 10px;
+        }
+
+        footer {
+            background-color: #330000;
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .radar-overlay {
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .flight-ranges {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .flight-range {
+            background-color: #330000;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .model-data {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .model-item {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #ff6b6b;
+        }
+
+        .error-message {
+            background-color: #330000;
+            color: #ff6b6b;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .data-refresh {
+            text-align: center;
+            margin: 15px 0;
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>NDAWX</h1>
+        <p class="subtitle">Non-Disclosure Agreement Weather - Free Weather Knowledge</p>
+    </header>
+
+    <div class="container">
+        <div class="section" id="map-section">
+            <h2 class="section-title">Arizona Weather Map</h2>
+            <div id="map"></div>
+
+            <div class="radar-overlay">
+                <h3>Radar Overlay</h3>
+                <p>Low-resolution radar data overlay for Arizona region</p>
+            </div>
+
+            <div class="model-data">
+                <div class="model-item">HRRR Model</div>
+                <div class="model-item">GFS Model</div>
+                <div class="model-item">Observations</div>
+            </div>
+        </div>
+
+        <div class="section" id="weather-data-section">
+            <h2 class="section-title">Weather Observations & Forecasts</h2>
+
+            <div id="airport-stations">
+                <div class="loading">Loading weather data...</div>
+            </div>
+
+            <div class="forecast-section">
+                <h3>Compiled 24-Hour Weather Summary</h3>
+                <p>Analysis of recent weather patterns and model consistency across HRRR and GFS.</p>
+                <p id="forecast-summary">Weather data loading...</p>
+            </div>
+
+            <div class="daily-fact">
+                <h3>Daily Weather Fact</h3>
+                <p id="daily-fact">Arizona's Sonoran Desert experiences its most significant precipitation during the summer monsoon season (July through September), with typical daily rainfall amounts reaching up to 2 inches in localized areas.</p>
+            </div>
+        </div>
+
+        <div class="section" id="local-effects-section">
+            <h2 class="section-title">Local Effects & County Analysis</h2>
+
+            <div class="toggle-container">
+                <input type="checkbox" id="effects-toggle">
+                <label for="effects-toggle">Show Local Effects (12 Counties)</label>
+            </div>
+
+            <div id="county-local-effects" class="county-local-effects">
+                <div class="loading">Loading county effects...</div>
+            </div>
+        </div>
+
+        <div class="section" id="synoptic-section">
+            <h2 class="section-title">Synoptic Weather Update</h2>
+
+            <div class="synoptic-update">
+                <div class="synoptic-box">
+                    <h3 class="synoptic-title">Western CONUS</h3>
+                    <p>Current high pressure ridge over the western United States. Cooler temperatures in the Pacific Northwest with dry conditions persisting along the coast.</p>
+                </div>
+
+                <div class="synoptic-box">
+                    <h3 class="synoptic-title">Central CONUS</h3>
+                    <p>Deepening trough over the central United States creating a north-south temperature gradient. Active weather patterns with strong jet stream influence on mid-latitude systems.</p>
+                </div>
+
+                <div class="synoptic-box">
+                    <h3 class="synoptic-title">Eastern CONUS</h3>
+                    <p>Stagnant high pressure system over the eastern United States creating humid conditions and potential for severe weather outbreaks in areas of convergence.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="flight-ranges-section">
+            <h2 class="section-title">Flight Ranges</h2>
+
+            <div class="flight-ranges">
+                <div class="flight-range">
+                    <strong>Arizona Flight Ranges</strong>
+                    <p>Active during specific seasons with elevated temperatures and low humidity conditions.</p>
+                </div>
+
+                <div class="flight-range">
+                    <strong>Military Flight Ranges</strong>
+                    <p>Restricted airspace regions with controlled overflights due to training activities.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>NDAWX - Non-Disclosure Agreement Weather | Free Weather Knowledge Available to All</p>
+        <div class="data-refresh" id="data-refresh">Last updated: <span id="update-time">Loading...</span></div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        class WeatherService {
+            constructor() {
+                this.stations = ['KPHX', 'KLUF', 'KIWA', 'KGXF', 'KDMA', 'KLSV', 'KNYL', 'KGYR', 'KFLG', 'KPRC'];
+                this.mapInitialized = false;
+            }
+
+            async fetchWeatherData() {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        const mockData = {
+                            stations: [
+                                { name: 'KPHX', temp: '87°F', wind: '5 mph NNE', modelTemp: '85°F' },
+                                { name: 'KLUF', temp: '72°F', wind: '8 mph NNW', modelTemp: '70°F' },
+                                { name: 'KIWA', temp: '84°F', wind: '6 mph SW', modelTemp: '82°F' },
+                                { name: 'KGXF', temp: '103°F', wind: '10 mph SE', modelTemp: '100°F' },
+                                { name: 'KDMA', temp: '95°F', wind: '12 mph SSW', modelTemp: '92°F' },
+                                { name: 'KLSV', temp: '69°F', wind: '7 mph ESE', modelTemp: '67°F' },
+                                { name: 'KNYL', temp: '77°F', wind: '9 mph ENE', modelTemp: '75°F' },
+                                { name: 'KGYR', temp: '60°F', wind: '11 mph WSW', modelTemp: '58°F' },
+                                { name: 'KFLG', temp: '62°F', wind: '13 mph WNW', modelTemp: '60°F' },
+                                { name: 'KPRC', temp: '89°F', wind: '15 mph NE', modelTemp: '87°F' }
+                            ],
+                            forecastSummary: 'Recent precipitation trends indicate increased convective activity with enhanced updrafts over the eastern Sierra foothills.',
+                            countyEffects: [
+                                { name: 'Pinal County', effect: 'Increased humidity from monsoon systems, contributing to flash flood potential in wash areas.' },
+                                { name: 'Maricopa County', effect: 'Heat island effect with temperatures up to 5-10°F above surrounding areas due to urbanization.' },
+                                { name: 'Yavapai County', effect: 'Mountain-valley temperature inversions during nights, causing cooler conditions in valleys.' },
+                                { name: 'Coconino County', effect: 'Increased cloud cover and precipitation potential with changing wind directions at higher elevations.' },
+                                { name: 'Apache County', effect: 'Higher elevation snowpack contributing to spring runoff patterns when conditions allow.' }
+                            ],
+                            updateTime: new Date().toLocaleString()
+                        };
+                        resolve(mockData);
+                    }, 1500);
+                });
+            }
+
+            async initializeMap() {
+                if (this.mapInitialized) return;
+
+                const map = L.map('map').setView([34.0522, -118.2437], 7);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                const airportPositions = [
+                    { name: 'KPHX', lat: 33.4343, lng: -112.0125, temp: '87°F' },
+                    { name: 'KLUF', lat: 34.6009, lng: -112.2277, temp: '72°F' },
+                    { name: 'KIWA', lat: 34.1281, lng: -114.9647, temp: '84°F' },
+                    { name: 'KGXF', lat: 32.7075, lng: -110.2722, temp: '103°F' },
+                    { name: 'KDMA', lat: 32.4069, lng: -110.7786, temp: '95°F' },
+                    { name: 'KLSV', lat: 36.9222, lng: -111.4347, temp: '69°F' },
+                    { name: 'KNYL', lat: 36.4450, lng: -111.3286, temp: '77°F' },
+                    { name: 'KGYR', lat: 35.4597, lng: -111.8625, temp: '60°F' },
+                    { name: 'KFLG', lat: 35.1394, lng: -111.6711, temp: '62°F' },
+                    { name: 'KPRC', lat: 32.4303, lng: -111.2108, temp: '89°F' }
+                ];
+
+                airportPositions.forEach(airport => {
+                    const marker = L.marker([airport.lat, airport.lng]).addTo(map);
+                    marker.bindPopup(
+                        `<div class="airport-station">
+                            <div class="airport-name">${airport.name}</div>
+                            <div>Temperature: ${airport.temp}</div>
+                            <div>Observation: Local</div>
+                        </div>`
+                    );
+                });
+
+                this.mapInitialized = true;
+            }
+
+            updatePageWithWeatherData(data) {
+                const stationsElement = document.getElementById('airport-stations');
+                if (data.stations && data.stations.length > 0) {
+                    stationsElement.innerHTML = '';
+                    data.stations.forEach(station => {
+                        const stationDiv = document.createElement('div');
+                        stationDiv.className = 'airport-station';
+                        stationDiv.innerHTML = `
+                            <div class="airport-name">${station.name}</div>
+                            <div>Temperature: <span class="temperature">${station.temp}</span></div>
+                            <div>Model Temperature: <span class="temperature">${station.modelTemp}</span></div>
+                            <div>Wind: <span class="wind-speed">${station.wind}</span></div>
+                        `;
+                        stationsElement.appendChild(stationDiv);
+                    });
+                }
+
+                const forecastSummary = document.getElementById('forecast-summary');
+                if (forecastSummary && data.forecastSummary) {
+                    forecastSummary.textContent = data.forecastSummary;
+                }
+
+                const countyEffectsElement = document.getElementById('county-local-effects');
+                if (data.countyEffects && data.countyEffects.length > 0) {
+                    countyEffectsElement.innerHTML = '';
+                    data.countyEffects.forEach(effect => {
+                        const effectDiv = document.createElement('div');
+                        effectDiv.className = 'effect-item';
+                        effectDiv.innerHTML = `<strong>${effect.name}:</strong> ${effect.effect}`;
+                        countyEffectsElement.appendChild(effectDiv);
+                    });
+                }
+
+                const updateTime = document.getElementById('update-time');
+                if (updateTime && data.updateTime) {
+                    updateTime.textContent = data.updateTime;
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const weatherService = new WeatherService();
+
+            try {
+                await weatherService.initializeMap();
+                const weatherData = await weatherService.fetchWeatherData();
+                weatherService.updatePageWithWeatherData(weatherData);
+            } catch (error) {
+                console.error('Error loading weather data:', error);
+                document.getElementById('airport-stations').innerHTML =
+                    '<div class="error-message">Failed to load weather data. Please try again later.</div>';
+            }
+        });
+    </script>
+</body>
+</html>
